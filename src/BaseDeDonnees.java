@@ -54,6 +54,13 @@ public class BaseDeDonnees {
                     + "id_pokemon INTEGER NOT NULL, "
                     + "FOREIGN KEY(id_pokemon) REFERENCES pokemon(id))");
 
+            st.executeUpdate("CREATE TABLE IF NOT EXISTS score ("
+                    + "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                    + "nom_joueur TEXT NOT NULL, "
+                    + "resultat TEXT NOT NULL, "
+                    + "nombre_tours INTEGER NOT NULL, "
+                    + "date TEXT NOT NULL)");
+
             // on regarde si la base contient deja des pokemon
             ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM pokemon");
             int nb = 0;
@@ -361,6 +368,119 @@ public class BaseDeDonnees {
             }
         } catch (SQLException e) {
             System.out.println("Erreur lors de la suppression : " + e.getMessage());
+        }
+    }
+
+    // ajoute un score dans la base
+    public void ajouterScore(String nomJoueur, String resultat, int nbTours, String date) {
+        String requete = "INSERT INTO score(nom_joueur, resultat, nombre_tours, date) VALUES (?, ?, ?, ?)";
+        try {
+            PreparedStatement ps = connexion.prepareStatement(requete);
+            ps.setString(1, nomJoueur);
+            ps.setString(2, resultat);
+            ps.setInt(3, nbTours);
+            ps.setString(4, date);
+            ps.executeUpdate();
+            ps.close();
+        } catch (SQLException e) {
+            System.out.println("Erreur lors de l'ajout du score : " + e.getMessage());
+        }
+    }
+
+    // charge tous les scores formattes avec un rang pour l'affichage du tableau
+    public ArrayList<String> chargerTousLesScores() {
+        ArrayList<String> liste = new ArrayList<String>();
+        String requete = "SELECT nom_joueur, resultat, nombre_tours, date FROM score ORDER BY id";
+        try {
+            Statement st = connexion.createStatement();
+            ResultSet rs = st.executeQuery(requete);
+            int rang = 1;
+            while (rs.next()) {
+                String nom = rs.getString("nom_joueur");
+                String resultat = rs.getString("resultat");
+                int tours = rs.getInt("nombre_tours");
+                String date = rs.getString("date");
+                liste.add(rang + " - " + nom + " - " + resultat + " - " + tours + " tours - " + date);
+                rang++;
+            }
+            rs.close();
+            st.close();
+        } catch (SQLException e) {
+            System.out.println("Erreur lors du chargement des scores : " + e.getMessage());
+        }
+        return liste;
+    }
+
+    // charge les scores avec leur id (pour la gestion : modif/suppression)
+    public ArrayList<String> chargerScoresAvecId() {
+        ArrayList<String> liste = new ArrayList<String>();
+        String requete = "SELECT id, nom_joueur, resultat, nombre_tours, date FROM score ORDER BY id";
+        try {
+            Statement st = connexion.createStatement();
+            ResultSet rs = st.executeQuery(requete);
+            while (rs.next()) {
+                int id = rs.getInt("id");
+                String nom = rs.getString("nom_joueur");
+                String resultat = rs.getString("resultat");
+                int tours = rs.getInt("nombre_tours");
+                String date = rs.getString("date");
+                liste.add("ID " + id + " - " + nom + " - " + resultat + " - " + tours + " tours - " + date);
+            }
+            rs.close();
+            st.close();
+        } catch (SQLException e) {
+            System.out.println("Erreur lors du chargement des scores : " + e.getMessage());
+        }
+        return liste;
+    }
+
+    // modifie le nom du joueur dans un score
+    public void modifierNomJoueurScore(int idScore, String nouveauNom) {
+        String requete = "UPDATE score SET nom_joueur = ? WHERE id = ?";
+        try {
+            PreparedStatement ps = connexion.prepareStatement(requete);
+            ps.setString(1, nouveauNom);
+            ps.setInt(2, idScore);
+            int n = ps.executeUpdate();
+            ps.close();
+            if (n == 0) {
+                System.out.println("Aucun score avec l'id " + idScore);
+            } else {
+                System.out.println("Score " + idScore + " modifie.");
+            }
+        } catch (SQLException e) {
+            System.out.println("Erreur lors de la modification du score : " + e.getMessage());
+        }
+    }
+
+    // supprime un score precis
+    public void supprimerScore(int idScore) {
+        String requete = "DELETE FROM score WHERE id = ?";
+        try {
+            PreparedStatement ps = connexion.prepareStatement(requete);
+            ps.setInt(1, idScore);
+            int n = ps.executeUpdate();
+            ps.close();
+            if (n == 0) {
+                System.out.println("Aucun score avec l'id " + idScore);
+            } else {
+                System.out.println("Score " + idScore + " supprime.");
+            }
+        } catch (SQLException e) {
+            System.out.println("Erreur lors de la suppression du score : " + e.getMessage());
+        }
+    }
+
+    // supprime tous les scores
+    public void supprimerTousLesScores() {
+        String requete = "DELETE FROM score";
+        try {
+            Statement st = connexion.createStatement();
+            int n = st.executeUpdate(requete);
+            st.close();
+            System.out.println(n + " scores supprimes.");
+        } catch (SQLException e) {
+            System.out.println("Erreur lors de la suppression des scores : " + e.getMessage());
         }
     }
 

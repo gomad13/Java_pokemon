@@ -1,0 +1,22 @@
+# Fichiers compiles Java
+*.class
+bin/
+out/
+target/
+
+# Fichiers VS Code et Eclipse
+.vscode/
+.idea/
+.project
+.classpath
+.settings/
+
+# Fichiers systeme
+Thumbs.db
+.DS_Store
+
+# Base de donnees locale (on garde le script SQL mais pas le fichier .db)
+data/*.db
+
+# Configuration Claude Code (a NE PAS pousser sur GitHub)
+.claude/

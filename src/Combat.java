@@ -1,3 +1,4 @@
+import java.time.LocalDate;
 import java.util.Scanner;
 
 // Gere le deroulement d'un combat entre deux joueurs.
@@ -9,11 +10,18 @@ public class Combat {
     private Joueur joueur1;
     private Joueur joueur2;
     private Scanner clavier;
+    private BaseDeDonnees bdd;
+    private int nbTours = 0;
 
-    public Combat(Joueur joueur1, Joueur joueur2, Scanner clavier) {
+    public Combat(Joueur joueur1, Joueur joueur2, Scanner clavier, BaseDeDonnees bdd) {
         this.joueur1 = joueur1;
         this.joueur2 = joueur2;
         this.clavier = clavier;
+        this.bdd = bdd;
+    }
+
+    public int getNbTours() {
+        return nbTours;
     }
 
     // Boucle principale du combat
@@ -27,15 +35,24 @@ public class Combat {
         }
 
         System.out.println("\n=== FIN DU COMBAT ===");
+        String resultat;
         if (joueur1.getEquipe().estVaincue()) {
             System.out.println(joueur2.getNom() + " a gagne !");
+            resultat = "Defaite";
         } else {
             System.out.println(joueur1.getNom() + " a gagne !");
+            resultat = "Victoire";
         }
+
+        // enregistrement du score en base
+        String date = LocalDate.now().toString();
+        bdd.ajouterScore(joueur1.getNom(), resultat, nbTours, date);
+        System.out.println("Score enregistre.");
     }
 
     // Un tour : le joueur 1 choisit (attaquer ou changer), puis l'IA attaque
     private void tourDeJeu() {
+        nbTours++;
         Pokemon p1 = joueur1.getEquipe().getPokemonActif();
         Pokemon p2 = joueur2.getEquipe().getPokemonActif();
 

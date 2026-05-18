@@ -1,4 +1,5 @@
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Random;
 import java.util.Scanner;
@@ -49,7 +50,7 @@ public class Main {
 
             switch (choix) {
                 case 1:
-                    jouerPartie(clavier, bdd);
+                    sousMenuPartie(clavier, bdd);
                     break;
                 case 2:
                     afficherScores(clavier, bdd);
@@ -70,7 +71,70 @@ public class Main {
         clavier.close();
     }
 
-    // lance une partie complete : choix equipe + combat
+    // Sous-menu : match unique, tournoi, ou retour
+    private static void sousMenuPartie(Scanner clavier, BaseDeDonnees bdd) {
+        boolean retour = false;
+        while (!retour) {
+            System.out.println("\n====== TYPE DE PARTIE ======");
+            System.out.println();
+            System.out.println("1 - Match unique (1 vs 1 IA)");
+            System.out.println("2 - Tournoi (3 combats a la suite)");
+            System.out.println("3 - Retour au menu principal");
+            System.out.print("\nVotre choix : ");
+
+            String saisie = clavier.nextLine().trim();
+            int choix;
+            try {
+                choix = Integer.parseInt(saisie);
+            } catch (NumberFormatException e) {
+                System.out.println("Saisie invalide.");
+                continue;
+            }
+
+            if (choix == 1) {
+                jouerPartie(clavier, bdd);
+                retour = true;
+            } else if (choix == 2) {
+                jouerTournoi(clavier, bdd);
+                retour = true;
+            } else if (choix == 3) {
+                retour = true;
+            } else {
+                System.out.println("Choix invalide.");
+            }
+        }
+    }
+
+    // Demande au joueur le niveau de difficulte de l'IA
+    private static NiveauDifficulte demanderDifficulte(Scanner clavier) {
+        System.out.println("\n====== CHOISIR LA DIFFICULTE ======");
+        System.out.println();
+        System.out.println("1 - Facile (l'IA joue au hasard)");
+        System.out.println("2 - Moyen (l'IA choisit ses meilleures attaques)");
+        System.out.println("3 - Difficile (l'IA change strategiquement de Pokemon)");
+        System.out.println("4 - Impossible (IA optimale + Pokemon boostes)");
+
+        int choix = -1;
+        while (choix < 1 || choix > 4) {
+            System.out.print("\nVotre choix : ");
+            try {
+                choix = Integer.parseInt(clavier.nextLine().trim());
+                if (choix < 1 || choix > 4) {
+                    System.out.println("Choisissez un nombre entre 1 et 4.");
+                }
+            } catch (NumberFormatException e) {
+                System.out.println("Saisie invalide.");
+                choix = -1;
+            }
+        }
+
+        if (choix == 1) return NiveauDifficulte.FACILE;
+        if (choix == 2) return NiveauDifficulte.MOYEN;
+        if (choix == 3) return NiveauDifficulte.DIFFICILE;
+        return NiveauDifficulte.IMPOSSIBLE;
+    }
+
+    // lance une partie complete : choix equipe + difficulte + combat
     private static void jouerPartie(Scanner clavier, BaseDeDonnees bdd) {
         ArrayList<Pokemon> tousLesPokemon = bdd.chargerTousLesPokemon();
 
@@ -90,16 +154,11 @@ public class Main {
         Equipe equipeJoueur = new Equipe();
         choisirEquipeJoueur(clavier, tousLesPokemon, equipeJoueur);
 
+        // choix de la difficulte
+        NiveauDifficulte niveau = demanderDifficulte(clavier);
+
         // composition aleatoire de l'equipe de l'IA
-        Equipe equipeIA = new Equipe();
-        Random random = new Random();
-        ArrayList<Pokemon> disponibles = new ArrayList<Pokemon>(tousLesPokemon);
-        for (int i = 0; i < 3; i++) {
-            int index = random.nextInt(disponibles.size());
-            Pokemon original = disponibles.get(index);
-            equipeIA.ajouterPokemon(copierPokemon(original));
-            disponibles.remove(index);
-        }
+        Equipe equipeIA = creerEquipeIA(tousLesPokemon, niveau);
 
         System.out.println("\nL'IA a compose son equipe :");
         for (int i = 0; i < equipeIA.getNombrePokemon(); i++) {
@@ -108,10 +167,106 @@ public class Main {
 
         // creation des joueurs et lancement du combat
         Joueur joueur = new Joueur(nom, equipeJoueur, clavier);
-        JoueurIA ia = new JoueurIA("Dresseur IA", equipeIA, clavier);
+        JoueurIA ia = new JoueurIA("Dresseur IA", equipeIA, clavier, niveau);
 
         Combat combat = new Combat(joueur, ia, clavier, bdd);
         combat.lancerCombat();
+    }
+
+    // Lance un tournoi : 3 combats successifs contre 3 IA differentes.
+    // Le joueur garde la meme equipe (soignee entre les combats).
+    private static void jouerTournoi(Scanner clavier, BaseDeDonnees bdd) {
+        ArrayList<Pokemon> tousLesPokemon = bdd.chargerTousLesPokemon();
+
+        if (tousLesPokemon.size() < 3) {
+            System.out.println("Il n'y a pas assez de Pokemon dans la base pour jouer.");
+            return;
+        }
+
+        // saisie du nom du joueur
+        System.out.print("\nEntrez votre nom : ");
+        String nom = clavier.nextLine();
+        if (nom.trim().equals("")) {
+            nom = "Joueur";
+        }
+
+        // composition de l'equipe du joueur (une seule fois pour tout le tournoi)
+        Equipe equipeJoueur = new Equipe();
+        choisirEquipeJoueur(clavier, tousLesPokemon, equipeJoueur);
+
+        // choix de la difficulte (applique a TOUTES les IA du tournoi)
+        NiveauDifficulte niveau = demanderDifficulte(clavier);
+
+        Joueur joueur = new Joueur(nom, equipeJoueur, clavier);
+
+        int totalTours = 0;
+        boolean elimine = false;
+        int combatAtteint = 0;
+
+        for (int i = 1; i <= 3; i++) {
+            combatAtteint = i;
+            System.out.println("\n=== COMBAT " + i + "/3 contre Dresseur IA " + i + " ===");
+
+            // nouvelle equipe IA a chaque combat
+            Equipe equipeIA = creerEquipeIA(tousLesPokemon, niveau);
+            System.out.println("\nDresseur IA " + i + " a compose son equipe :");
+            for (int j = 0; j < equipeIA.getNombrePokemon(); j++) {
+                System.out.println(" - " + equipeIA.getPokemon(j).getNom());
+            }
+
+            JoueurIA ia = new JoueurIA("Dresseur IA " + i, equipeIA, clavier, niveau);
+
+            // on n'enregistre pas le score combat par combat, juste un score consolide a la fin
+            Combat combat = new Combat(joueur, ia, clavier, bdd, false);
+            boolean joueurGagne = combat.lancerCombat();
+            totalTours += combat.getNbTours();
+
+            if (!joueurGagne) {
+                elimine = true;
+                break;
+            }
+
+            // soin complet + resurrection entre les combats (sauf apres le dernier)
+            if (i < 3) {
+                equipeJoueur.soignerEquipe();
+                System.out.println("\nVos Pokemon sont soignes avant le prochain combat.");
+            }
+        }
+
+        // recap du tournoi et enregistrement d'un seul score consolide
+        System.out.println("\n======= FIN DU TOURNOI =======");
+        String resultat;
+        if (elimine) {
+            System.out.println("Vous avez ete elimine au combat " + combatAtteint + "/3.");
+            resultat = "Defaite (tournoi)";
+        } else {
+            System.out.println("Felicitations, vous etes le champion du tournoi !");
+            resultat = "Victoire (tournoi)";
+        }
+        System.out.println("Total de tours joues : " + totalTours);
+
+        bdd.ajouterScore(nom, resultat, totalTours, LocalDate.now().toString());
+        System.out.println("Score enregistre.");
+    }
+
+    // Cree une equipe aleatoire de 3 pokemon pour l'IA.
+    // En mode IMPOSSIBLE, les pokemon ont +30% d'attaque et de defense
+    // (PV inchanges, arrondi a l'entier superieur).
+    private static Equipe creerEquipeIA(ArrayList<Pokemon> tousLesPokemon, NiveauDifficulte niveau) {
+        Equipe equipeIA = new Equipe();
+        Random random = new Random();
+        ArrayList<Pokemon> disponibles = new ArrayList<Pokemon>(tousLesPokemon);
+        for (int i = 0; i < 3; i++) {
+            int index = random.nextInt(disponibles.size());
+            Pokemon original = disponibles.get(index);
+            if (niveau == NiveauDifficulte.IMPOSSIBLE) {
+                equipeIA.ajouterPokemon(copierPokemonBooste(original));
+            } else {
+                equipeIA.ajouterPokemon(copierPokemon(original));
+            }
+            disponibles.remove(index);
+        }
+        return equipeIA;
     }
 
     // affiche le tableau des scores et attend une touche pour revenir
@@ -232,6 +387,19 @@ public class Main {
     private static Pokemon copierPokemon(Pokemon original) {
         Pokemon copie = new Pokemon(original.getNom(), original.getType(),
                 original.getPvMax(), original.getAttaque(), original.getDefense());
+        for (int i = 0; i < original.getNombreAttaques(); i++) {
+            copie.ajouterAttaque(original.getListeAttaques().get(i));
+        }
+        return copie;
+    }
+
+    // copie avec bonus +30% attaque et defense (mode IMPOSSIBLE).
+    // PV inchanges, arrondi a l'entier superieur via Math.ceil.
+    private static Pokemon copierPokemonBooste(Pokemon original) {
+        int newAtt = (int) Math.ceil(original.getAttaque() * 1.3);
+        int newDef = (int) Math.ceil(original.getDefense() * 1.3);
+        Pokemon copie = new Pokemon(original.getNom(), original.getType(),
+                original.getPvMax(), newAtt, newDef);
         for (int i = 0; i < original.getNombreAttaques(); i++) {
             copie.ajouterAttaque(original.getListeAttaques().get(i));
         }

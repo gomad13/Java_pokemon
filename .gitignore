@@ -20,3 +20,6 @@ data/*.db
 
 # Configuration Claude Code (a NE PAS pousser sur GitHub)
 .claude/
+
+# Document interne, ne pas pousser sur GitHub
+Instructions.md

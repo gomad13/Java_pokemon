@@ -15,8 +15,9 @@ public class Joueur {
         this.clavier = clavier;
     }
 
-    // Demande au joueur quelle attaque utiliser parmi celles du pokemon
-    public Attaque choisirAttaque(Pokemon p) {
+    // Demande au joueur quelle attaque utiliser parmi celles du pokemon.
+    // Le parametre adverse n'est pas utilise ici (sert pour l'IA).
+    public Attaque choisirAttaque(Pokemon p, Pokemon adverse) {
         System.out.println("\nAttaques de " + p.getNom() + " :");
         for (int i = 0; i < p.getNombreAttaques(); i++) {
             System.out.println((i + 1) + " - " + p.getListeAttaques().get(i));

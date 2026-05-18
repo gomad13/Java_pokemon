@@ -41,6 +41,11 @@ public class Pokemon {
         }
     }
 
+    // Remet les pv au maximum (sert entre deux combats du tournoi)
+    public void soigner() {
+        this.pv = pvMax;
+    }
+
     public int getNombreAttaques() {
         return listeAttaques.size();
     }

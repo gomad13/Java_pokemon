@@ -52,4 +52,13 @@ public class Equipe {
     public ArrayList<Pokemon> getListePokemon() {
         return listePokemon;
     }
+
+    // Soigne tous les pokemon de l'equipe (PV au max, KO ressuscites).
+    // Remet aussi l'index actif au premier pokemon.
+    public void soignerEquipe() {
+        for (int i = 0; i < listePokemon.size(); i++) {
+            listePokemon.get(i).soigner();
+        }
+        this.indexActif = 0;
+    }
 }
